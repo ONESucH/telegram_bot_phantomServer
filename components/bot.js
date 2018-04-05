@@ -1,5 +1,6 @@
 'use strict';
-const http = require('https');
+const http = require('http');
+const https = require('https');
 const getToken = require('./token');
 let moreCommands = '',
     token = getToken.tokenBuilder();
@@ -12,7 +13,7 @@ module.exports = {
             headers: {'User-Agent': 'request'}
         };
 
-        http.get(options, (res) => {
+        https.get(options, (res) => {
 
             if (res.statusCode !== 200) return false;
 
@@ -51,7 +52,7 @@ module.exports = {
             headers: {'User-Agent': 'request'}
         };
 
-        http.get(options, (res) => {
+        https.get(options, (res) => {
             let json = '';
 
             res.on('data', (chunk) => {
@@ -81,6 +82,12 @@ module.exports = {
                 if (commands === '/newpaper' && commands !== moreCommands) {
                     module.exports.newpaper(data.result, userData);
                 }
+                if (commands === '/hitech' && commands !== moreCommands) {
+                    module.exports.hiTech(data.result, userData);
+                }
+                if (commands === '/location' && commands !== moreCommands) {
+                    module.exports.location(data.result, userData);
+                }
                 moreCommands = commands;
             });
         });
@@ -99,7 +106,7 @@ module.exports = {
             path: encodeURI('/bot' + token + '/sendMessage?chat_id=' + chatOpen[0].message.chat.id + '&text=Добавляем'),
             headers: {'Content-Type': 'application/json'}
         };
-        http.get(option, (res) => {
+        https.get(option, (res) => {
             let json = '';
 
             res.on('data', (chunk) => {
@@ -119,11 +126,11 @@ module.exports = {
         let getData = new Date(),
             option = {
                 host: 'api.telegram.org',
-                path: encodeURI('/bot' + token + '/sendMessage?chat_id=' + chatOpen[0].message.chat.id + '&text=Время: ' + getData.getHours() + ':' + getData.getMinutes() + ':' + getData.getSeconds()),
+                path: encodeURI('/bot' + token + '/sendMessage?chat_id=' + chatOpen[0].message.chat.id + '&text=Время:\n' + getData.getHours() + ':' + getData.getMinutes() + ':' + getData.getSeconds()),
                 headers: {'Content-Type': 'application/json'}
             };
 
-        http.get(option)
+        https.get(option)
     },
 
     /* Цитаты из рунета */
@@ -135,7 +142,7 @@ module.exports = {
                 headers: {'Content-Type': 'application/json'}
             };
 
-        http.get(optionsQuote, (req) => {
+        https.get(optionsQuote, (req) => {
             req.on('data', (chunk) => {
                 json += chunk;
             });
@@ -144,11 +151,11 @@ module.exports = {
 
                 let option = {
                     host: 'api.telegram.org',
-                    path: encodeURI('/bot' + token + '/sendMessage?chat_id=' + chatOpen[0].message.chat.id + '&text=Цитата: ' + globalData.quoteText + 'Автор: ' + globalData.quoteAuthor),
+                    path: encodeURI('/bot' + token + '/sendMessage?chat_id=' + chatOpen[0].message.chat.id + '&text=Цитата:\n' + globalData.quoteText + '\nАвтор:\n' + globalData.quoteAuthor),
                     headers: {'Content-Type': 'application/json'}
                 };
 
-                http.get(option)
+                https.get(option)
             });
         });
 
@@ -162,7 +169,7 @@ module.exports = {
             headers: {'Content-Type': 'application/json'}
         };
 
-        http.get(option, (req) => {
+        https.get(option, (req) => {
             let json = '';
             req.on('data', (chunk) => {
                 json += chunk;
@@ -171,17 +178,89 @@ module.exports = {
                 let responce = JSON.parse(json),
                     optionTelegramm = {
                         host: 'api.telegram.org',
-                        path: encodeURI('/bot' + token + '/sendMessage?chat_id=' + chatOpen[0].message.chat.id + '&text=Последняя новость: ' + responce.articles[0].title),
+                        path: encodeURI('/bot' + token + '/sendMessage?chat_id=' + chatOpen[0].message.chat.id + '&text=Последняя новость:\n' + responce.articles[0].title),
                         headers: {'Content-Type': 'application/json'}
                     };
 
-                http.get(optionTelegramm)
-
+                https.get(optionTelegramm)
             });
         });
         
         setTimeout(function () {
             module.exports.newpaper(chatOpen, userData);
         }, 3600000); // 1ч
+    },
+
+    /* Новости HiTech - с автообновлением в 1 ч */
+    hiTech: function (chatOpen, userData) {
+        let option = {
+            host: 'newsapi.org',
+            path: '/v2/top-headlines?sources=techradar&apiKey=15432ffaf9054b8e8105ed6f7d9dc70e',
+            headers: {'Content-Type': 'application/json'}
+        };
+
+        https.get(option, (req) => {
+            let json = '';
+            req.on('data', (chunk) => {
+                json += chunk;
+            });
+            req.on('end', () => {
+                let responce = JSON.parse(json),
+                    optionTelegramm = {
+                        host: 'api.telegram.org',
+                        path: encodeURI('/bot' + token + '/sendMessage?chat_id=' + chatOpen[0].message.chat.id + '&text=' +
+                            '\nАвтор: ' + responce.articles[0].author + 
+                            '\nЗаголовок: ' + responce.articles[0].title),
+                        headers: {'Content-Type': 'application/json'}
+                    },
+                    optionTelegrammPhoto = {
+                        host: 'api.telegram.org',
+                        path: encodeURI('/bot' + token + '/sendPhoto?chat_id=' + chatOpen[0].message.chat.id + '&photo=' + responce.articles[0].urlToImage),
+                        headers: {'Content-Type': 'application/json'}
+                    };
+
+                https.get(optionTelegrammPhoto);
+                https.get(optionTelegramm);
+            });
+        });
+
+        setTimeout(function () {
+            module.exports.hiTech(chatOpen, userData);
+        }, 3600000); // 1ч
+    },
+
+    /* Моё положение */
+    location: function (chatOpen, userData) {
+        let json = '',
+            optionsLocation = {
+                host: 'api.ipstack.com',
+                path: '/check?access_key=99d528343eb31080f6bfba4e5255ee24',
+                headers: {'Content-Type': 'application/json'}
+            };
+
+        http.get(optionsLocation, (req) => { // api требует http соединение
+            req.on('data', (chunk) => {
+                json += chunk;
+            });
+            req.on('end', () => {
+                let globalData = JSON.parse(json);
+
+                let option = {
+                    host: 'api.telegram.org',
+                    path: encodeURI('/bot' + token + '/sendMessage?chat_id=' + chatOpen[0].message.chat.id + '&text=' +
+                        'Материк: ' + globalData.continent_name + 
+                        '\nСтрана: ' + globalData.country_name +
+                        '\nРегион: ' + globalData.region_name +
+                        '\nГород: ' + globalData.city +
+                        '\nШирота: ' + globalData.latitude +
+                        '\nДолгота: ' + globalData.longitude
+                    ),
+                    headers: {'Content-Type': 'application/json'}
+                };
+
+                https.get(option)
+            });
+        });
+
     }
 };
