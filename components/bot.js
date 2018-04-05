@@ -185,7 +185,7 @@ module.exports = {
                 https.get(optionTelegramm)
             });
         });
-        
+
         setTimeout(function () {
             module.exports.newpaper(chatOpen, userData);
         }, 3600000); // 1ч
@@ -209,7 +209,7 @@ module.exports = {
                     optionTelegramm = {
                         host: 'api.telegram.org',
                         path: encodeURI('/bot' + token + '/sendMessage?chat_id=' + chatOpen[0].message.chat.id + '&text=' +
-                            '\nАвтор: ' + responce.articles[0].author + 
+                            '\nАвтор: ' + responce.articles[0].author +
                             '\nЗаголовок: ' + responce.articles[0].title),
                         headers: {'Content-Type': 'application/json'}
                     },
@@ -246,19 +246,47 @@ module.exports = {
                 let globalData = JSON.parse(json);
 
                 let option = {
-                    host: 'api.telegram.org',
-                    path: encodeURI('/bot' + token + '/sendMessage?chat_id=' + chatOpen[0].message.chat.id + '&text=' +
-                        'Материк: ' + globalData.continent_name + 
-                        '\nСтрана: ' + globalData.country_name +
-                        '\nРегион: ' + globalData.region_name +
-                        '\nГород: ' + globalData.city +
-                        '\nШирота: ' + globalData.latitude +
-                        '\nДолгота: ' + globalData.longitude
-                    ),
-                    headers: {'Content-Type': 'application/json'}
-                };
+                        host: 'api.telegram.org',
+                        path: encodeURI('/bot' + token + '/sendMessage?chat_id=' + chatOpen[0].message.chat.id + '&text=' +
+                            'Материк: ' + globalData.continent_name +
+                            '\nСтрана: ' + globalData.country_name +
+                            '\nРегион: ' + globalData.region_name +
+                            '\nГород: ' + globalData.city +
+                            '\nШирота: ' + globalData.latitude +
+                            '\nДолгота: ' + globalData.longitude
+                        ),
+                        headers: {'Content-Type': 'application/json'}
+                    },
+                    optionsWeather = {
+                        host: 'api.darksky.net',
+                        path: '/forecast/cc56ec7668b7185e77557772cbbf83ad/' + globalData.latitude + ',' + globalData.longitude, // ключ / широта / долгота
+                        headers: {'Content-Type': 'application/json'}
+                    };
 
-                https.get(option)
+                https.get(option);
+
+                /* Погода */
+                https.get(optionsWeather, (req) => {
+                    let jsonWeather = '';
+                    
+                    req.on('data', (chunk) => {
+                        jsonWeather += chunk;
+                    });
+                    req.on('end', () => {
+                        let responce = JSON.parse(jsonWeather),
+                            whaterResulttelegramm = {
+                                host: 'api.telegram.org',
+                                path: encodeURI('/bot' + token + '/sendMessage?chat_id=' + chatOpen[0].message.chat.id + '&text=' +
+                                    'Временная зона: ' + responce.timezone +
+                                    '\nПогодные условия сейчас: ' + responce.currently.summary +
+                                    '\nЗавтра: ' + responce.hourly.summary +
+                                    '\nЕжедневно: ' + responce.daily.summary
+                                ),
+                                headers: {'Content-Type': 'application/json'}
+                            };
+                        https.get(whaterResulttelegramm);
+                    })
+                });
             });
         });
 
